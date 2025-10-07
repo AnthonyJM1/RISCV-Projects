@@ -1,26 +1,66 @@
+#C Program Model for write_string
+#// writes @a bytes of the string @a buf to stdout
+#void write_string(char *buf, int bytes);
+#a0 =buf, a1 = bytes
+
+#C Program Model for read_string
 // reads @a bytes from stdin into the string @a buf.
 // Returns the number of bytes read
 //int read_string(char *buf, int bytes);
 //a0=buf, a1=bytes
 
-.section
-.text
+#My constants to be called throughout my program.
+.equ STDOUT, 1
 .equ STDIN, 0
-.equ read_string 63
-.globl read_string
+.equ __NR_READ, 63
+.equ __NR_WRITE, 64
 
-li  t0,0 
-addi a1,a1, 1
-lb a0, 0(a0)
-beq a0,STDIN,DONE
+.text                                        #nAccepting to text segment.
+main:
+	# Prolog
+	addi sp, sp, -104                          # Making room on the stack for 104 bytes
+	sw   ra, 100(sp)                           # Backs up ra into the stack pointer at sp + 100
 
-read_String_Length:
-addi t1,t0, 1
-lb t1, 8(t1)
-bne t1, STDIN, DONE
+	# Write the prompt
+	la   a0, prompt                             # a0 = buf
+	addi a1, zero, prompt_end - prompt          # a1 = bytes
+	jal  ra, write_string                       # Saves the return address to the write_string location.
 
-DONE:
-mv a0,t1
+	# Read up to 100 bytes into stack buffer 
+	mv   a0, sp                                 # a0 = buf (stack space)
+	addi a1, zero, 100                          # a1 = max bytes
+	jal  ra, read_string                        # a0 = bytes_read 
 
+	# Echo what was read
+	mv   t0, a0                                 # t0 = bytes_read
+	mv   a0, sp                                 # a0 = buf
+	mv   a1, t0                                 # a1 = bytes
+	jal  ra, write_string                       # Saves the return address to the write string
 
+	# Epilog
+	lw   ra, 100(sp)                            # Restores the stack
+	addi sp, sp, 104                            # Recovers the space allotted
+	ret                                         # Jumps to ra label
 
+# ====================================================================================================
+write_string:
+	# syscall : a0=fd, a1=buf, a2=count, a7=WRITE
+	mv   a2, a1                                 # a2 = bytes
+	mv   a1, a0                                 # Moves buffer address to a1, start of string                   
+	li   a0, STDOUT                             # We write to a0, and to screen
+	li   a7, __NR_WRITE                         # We load our write constant into a7
+	ecall
+	ret
+ 
+read_string:
+	# syscall : a0=fd, a1=buf, a2=count, a7=READ
+	mv   a2, a1                            # a2 = bytes
+	mv   a1, a0                            # Moves buffer to the a1, start of string
+	li   a0, STDIN                         # We read from the keyboard/terminal
+	li   a7, __NR_READ                     # We move our syscall to a7 to read
+	ecall
+	ret
+
+.data                                    #everything from .text being converted back into data
+prompt:     .ascii "Enter a message: "
+prompt_end:
