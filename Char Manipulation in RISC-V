@@ -1,1 +1,33 @@
+.equ STDIN 1
+.equ STDOUT 0
+.equ __NR_WRITE 64
+.equ __NR_READ 64
+
+
+.text
+main:
+#prolog
+  add sp,sp, -104
+  sw ra, 100(sp)
+  la a0, prompt
+
+#testing
+jal ra, getchar
+jal ra,putchar
+
+
+getchar:
+
+putchar:
+
+gets:
+
+
+
+puts:
+mv 
+
+.data
+prompt: .acsii "Enter a message: "
+prompt_end:
 
