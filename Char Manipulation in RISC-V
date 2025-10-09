@@ -15,18 +15,51 @@ main:
 jal ra, getchar
 jal ra,putchar
 
+#Load prompt
+la a1, prompt
+la a3, prompt_end
+jal ra, 100(sp)
+addi sp, sp, 104
+ret
+
 
 getchar:
+  li a4, __NR_READ
+  li a0, STDIN
+  mv a1,sp
+  addi a2, x0, 1
+  ecall
+ret
+
 
 putchar:
+  li a5, __NR_WRITE
+  li a6, STDIN
+  mv a1,sp
+  mv a5, a1
+  ecall
+ret
 
 gets:
+gets_loop:
+lb a0, 0(a1)
+beq a0, a3, gets_loop_end
 
-
-
+j gets_loop
+gets_loop_end:
+ret
+ 
 puts:
-mv 
+  puts_loop:
+    lb a0,0(a1)                      # Load current char into a0
+    beq a1,a3, puts_loop_end         # Checking for End of String
+    jal ra,putchar                   # Print using putchar
+    addi a1,a1,1                     # Add 1 to a1 to move it to next char
+    j puts_loop                      # Jump back up to start of loop.
+  puts_loop_end:
+    ret
 
+lw ra, -100(ra)
 .data
 prompt: .acsii "Enter a message: "
 prompt_end:
