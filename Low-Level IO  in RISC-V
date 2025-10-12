@@ -1,0 +1,105 @@
+#Constants
+.equ STDIN,        0
+.equ STDOUT,       1
+.equ __NR_READ,   63
+.equ __NR_WRITE,  64
+
+.text
+
+main:
+  addi sp, sp, -104    #Allocates a lot of space
+  sw   ra, 0(sp)       #Securing Return Address
+
+  # puts(prompt)
+  la   a0, prompt    #Loading String
+  jal  ra, puts      #Print
+
+  # gets(buf)
+  addi a0, sp, 4          # a0 = First spot or &buf[0]
+  jal ra, gets            #Returns the count
+
+  # puts(buf)
+  addi a0, sp, 4        
+  jal ra, puts           #Print what we just read
+
+  lw  ra, 0(sp)          #Returning the ra
+  addi sp, sp, 104       #Free up the space.
+  ret                    #Return to caller
+
+# int getchar(void) 
+getchar:
+  addi sp, sp, -4            # creating space
+  li   a0, STDIN              # fd = 0
+  addi a1, sp, 0              # buf = sp
+  li   a2, 1                  # count = 1
+  li   a7, __NR_READ
+  ecall
+  lbu  a0, 0(sp)              # return that byte
+  addi sp, sp, 4
+  ret
+
+# int putchar(int c)
+putchar:
+  addi sp, sp, -4
+  sb   a0, 0(sp)              # store low byte to temp
+  li   a0, STDOUT             # fd = 1
+  addi a1, sp, 0              # buf = sp
+  li   a2, 1
+  li   a7, __NR_WRITE
+  ecall
+  lbu  a0, 0(sp)              # return the char we wrote (unsigned)
+  addi sp, sp, 4
+  ret
+
+# int gets(char *s) — reads until '\n', writes '\0',
+
+gets:
+  addi sp, sp, -4
+  sw   ra, 0(sp)
+
+  mv   t2, a0                 # t2 = base s
+  mv   t0, a0                 # t0 = cursor p
+  addi t3, a0, 99             # t3 = s + 99 (last data pos)
+
+gets_loop:
+  jal  ra, getchar            # a0 = ch
+  li   t1, 10                 # '\n'
+  beq  a0, t1, gets_done        # stop on newline
+  bge  t0, t3, gets_done        # stop if buffer full (leave room for '\0')
+  sb   a0, 0(t0)              # *p = ch
+  addi t0, t0, 1
+  j    gets_loop
+
+gets_done:
+  sb   x0, 0(t0)              # null-terminater
+  sub  a0, t0, t2             # return length
+
+  lw   ra, 0(sp)
+  addi sp, sp, 4
+  ret
+
+# int puts(const char *s) — prints s then '\n', returns 0
+puts:
+  addi sp, sp, -4        #Making room, for a word, 4 bytes 
+  sw   ra, 0(sp)         #Saving return address to stack
+
+  mv   t0, a0            #Making a temp pointer
+puts_loop:
+  lbu  t1, 0(t0)         #Loading bytes      
+  beq  t1, x0, puts_newline    #String ends, jump to puts_newline
+  mv   a0, t1            # Moving the characters back to a0
+  jal  ra, putchar       #Jumping to putchar
+  addi t0, t0, 1          #Increment Pointer
+  j    puts_loop          #Jumping back to loop till empty
+
+puts_newline:
+  li   a0, 10                 # Loading from ASCII newline
+  jal  ra, putchar            #Then printing
+  li   a0, 0                  #Returning 0 meaning puts() is done
+
+  lw   ra, 0(sp)              #Restoring saved return address from stack
+  addi sp, sp, 4              #Deallocate space
+  ret                         #Return to caller
+
+.data
+prompt:   .ascii "Enter a message: "
