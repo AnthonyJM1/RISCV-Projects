@@ -1,0 +1,38 @@
+Write a RISC-V procedure “capitalize” that accepts the base address of a null-terminated string in
+register a0. The capitalize procedure should capitalize all letters in the string if they are not al-
+ready capitalized. For example, the string “Hello World!\0” would be transformed into “HELLO
+WORLD!\0”. The string may contain any ASCII symbol.
+
+.data
+prompt: .ascii "Hello World!
+
+.text
+.global main
+
+main:
+la a0, prompt
+jal ra, capitalize
+
+li a7,10
+ecall
+
+capitalize:
+loop:
+lbu t0,0(a0)
+beq t0,x0,done
+
+li t1, 'a'
+blt t0,t1, skip
+li t2,'z'
+bgt t0,t2,skip
+
+addi t0,t0,-32
+sb t0, 0(a0)
+
+skip:
+addi a0, a0,1
+j loop
+
+
+done:
+ret
