@@ -11,72 +11,72 @@ WORLD!\0”. The string may contain any ASCII symbol.
 .global main
 
 main:
-la a0, 1                #STDOUT
-la a1, prompt           #Loading String
-jal ra, capitalize      #Jump to capitalize
+la a0, prompt           #Loading String
+jal ra, capitalize 
 
+#Getting the length of prompt for printing
+la a0, prompt
+jal ra, str_len
 
-
-str_len:
-str_len_loop:
-lb sp,a0(0)    #Gonna read the stirng to see how many characters
-add a3,x0,0    #Increment to then return
-bnq sp,0 str_len_loop
-beq sp,0, capitalize
-sb sp, a0(0)
-
-
-capitalize:
-lbu t0,0(a0)
-add 
-cap_loop:
-mv t0,1
-
-
-
-beq t0,0,cap_done
-bnq t0,0 
-=======
-li t1, 97
-blt t0,t1, cap_skip
-li t2,122
-bgt t0,t2,cap_skip
-
-addi t0,t0,-32
-sb t0, 0(a0)
-
-cap_skip:
-addi a0, a0,1
-j cap_loop
-
-cap_done:
-ret
-
-print:
-mv t0, a0
-li a7, 64
-ecall
-
-strlen_loop:
-lbu t1,0(t0)
-beq t1,x0, strlen_done
-addi t0,t0, 1
-j strlen_loop
-
-strlen_done:
-sub a2, t0, a0    #a2 = length= end-start
-
-li a7, 64  #write
-li a0, 1  #STDOUT
-mv a1,a1
-mv a1, a0
-ecall
-ret
+#Print string
+jal ra, print
 
 exit:
 li a0, 0                #STDIN in a0
 li a7, 93               #Exit in a7
 ecall                   #System call 
 
+############################################
+str_len:
+mv t0,a0    #Pointer
+li a2,0     #Counter
+
+str_len_loop:
+lbu t1, 0(t0)
+beq t1,x0,str_len_done
+addi a2,a2,1
+addi t0,t0,1
+j str_len_loop
+
+str_len_done:
+ret
+
+########################################
+
+capitalize:
+mv t3,a0
+
+cap_loop:
+lbu t0,0(t3)
+beq t0,x0,cap_done
+
+li t1, 'a'
+blt t0,t1, cap_skip
+li t2, 'z'
+bgt t0, t2, cap_skip
+addi t0,t0,-32
+sb t0, 0(t3)
+
+cap_skip:
+addi t3,t3,1
+j cap_loop
+
+cap_done:
+ret
+
+###################################3
+print:
+mv t0, a0  #Start Address
+mv t1,a2  #t1 is length
+li a0,1    #Out to Terminal (STDOUT)
+mv a1,t0  #Our pointer
+mv a2,t1  #Final Length
+
+li a7, 64
+ecall
+ret
+
+
+
 .section .data
-prompt: .asciiz "Hello World!\n"
+prompt: .asciz "Hello World!\n"
