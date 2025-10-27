@@ -32,10 +32,10 @@ mv t0,a0    #Pointer
 li a2,0     #Counter
 
 str_len_loop:
-lbu t1, 0(t0)
-beq t1,x0,str_len_done
-addi a2,a2,1
-addi t0,t0,1
+lbu t1, 0(t0)           #Load current t0 byte
+beq t1,x0,str_len_done  #If end of string finish loop
+addi a2,a2,1            #Increment by 1
+addi t0,t0,1            #Move t1 over
 j str_len_loop
 
 str_len_done:
@@ -51,26 +51,26 @@ lbu t0,0(t3)
 beq t0,x0,cap_done
 
 li t1, 'a'
-blt t0,t1, cap_skip
+blt t0,t1, cap_skip    #Check if the byte is less than 97
 li t2, 'z'
-bgt t0, t2, cap_skip
-addi t0,t0,-32
+bgt t0, t2, cap_skip   #Check if the byte is greater than 9127
+addi t0,t0,-32         #If it is in the lower case range get it into its capital counterpart
 sb t0, 0(t3)
 
 cap_skip:
-addi t3,t3,1
+addi t3,t3,1           #Its a capital so skip
 j cap_loop
 
 cap_done:
 ret
 
-###################################3
+###################################
 print:
-mv t0, a0  #Start Address
-mv t1,a2  #t1 is length
-li a0,1    #Out to Terminal (STDOUT)
-mv a1,t0  #Our pointer
-mv a2,t1  #Final Length
+mv t0, a0             #Start Address
+mv t1,a2              #t1 is length
+li a0,1               #Out to Terminal (STDOUT)
+mv a1,t0              #Our pointer
+mv a2,t1              #Final Length
 
 li a7, 64
 ecall
