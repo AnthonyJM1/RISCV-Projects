@@ -1,0 +1,27 @@
+Please compile the following C program into RISC-V using the RV32I instruction set. If overflow is
+encountered, please round the return into +∞ as appropriate.
+
+float silly_math3(float A){
+return -A*1024;
+}
+
+.data
+negative_float: -3.14
+constant: 1024
+
+.text
+main:
+la x5, negative_float
+flw f0, 0(x5)
+li a0, constant
+
+
+silly_math:
+add t0,x5,a0
+and t1, x5, t0
+srli t1,r1,a0
+
+//subtracting bias
+
+
+end:
