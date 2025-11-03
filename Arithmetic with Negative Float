@@ -5,23 +5,33 @@ float silly_math3(float A){
 return -A*1024;
 }
 
-.data
-negative_float: -3.14
-constant: 1024
-
+#Single-Precision IEEE Format
 .text
 main:
-la x5, negative_float
-flw f0, 0(x5)
-li a0, constant
-
+li a0, 0x4048F5C3
+li a3, 0x80000000
 
 silly_math:
-add t0,x5,a0
-and t1, x5, t0
-srli t1,r1,a0
+srli t1,a0, 23 #Pulling out the exponent 
+and t1, t1, 0xff #Turning it negative
+addi t1, t1, 10 #Example: Multiplying 3.14*1024 
 
-//subtracting bias
+#Overflow Check
+li t2, 255 #Setting the range
+bge t1,t2, overflow
+j no_overflow
+
+overflow:
+li a0, 0x7F800000 #Loading + Infinity
 
 
-end:
+no_overflow:
+srli a0,a0,23
+ li   t3, 0x807FFFFF        # 1000 0000 0111....111
+and  a0, a0, t3            # a0 = float with exponent cleared
+
+slli t1, t1, 23            # move exponent up to bits 30..23
+or   a0, a0, t1            # insert exponent
+
+or a0, a0,a3 #Turning it negative
+ret
