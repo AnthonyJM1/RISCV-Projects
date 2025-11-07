@@ -1,7 +1,3 @@
-#C Program Model for write_string
-#// writes @a bytes of the string @a buf to stdout
-#void write_string(char *buf, int bytes);
-#a0 =buf, a1 = bytes
 
 #C Program Model for read_string
 // reads @a bytes from stdin into the string @a buf.
