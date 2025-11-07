@@ -57,6 +57,100 @@ read_string:
 	ecall
 	ret
 
+puts:                               # a0 = char* s
+    # compute length
+    mv   t0, a0                    # base
+    mv   t1, a0                    # scan
+1:  lbu  t2, 0(t1)
+    beq  t2, x0, 2f                # stop at NUL
+    addi t1, t1, 1
+    j    1b
+2:  sub  t3, t1, t0                # len = t1 - t0
+
+    # write(s, len)
+    li   a0, STDOUT
+    mv   a1, t0
+    mv   a2, t3
+    li   a7, __NR_WRITE
+    ecall
+
+    # write("\n", 1)
+    addi sp, sp, -16
+    li   t2, 10                    # '\n'
+    sb   t2, 0(sp)
+    li   a0, STDOUT
+    addi a1, sp, 0
+    li   a2, 1
+    li   a7, __NR_WRITE
+    ecall
+    addi sp, sp, 16
+    ret
+
+gets:                               # a0 = char* buf; returns a0=buf or x0 on EOF
+    mv   t3, a0                    # save original buf for return
+    mv   t0, a0                    # cursor = buf
+3:  addi sp, sp, -16               # temp byte on stack
+    li   a0, STDIN
+    addi a1, sp, 0
+    li   a2, 1
+    li   a7, __NR_READ
+    ecall                          # a0 = bytes read
+    beq  a0, x0, 6f                # EOF -> finish
+    lbu  t1, 0(sp)                 # ch
+    addi sp, sp, 16
+
+    li   t2, 10                    # '\n'
+    beq  t1, t2, 5f                # stop on newline (do not store '\n')
+    beq  t1, x0, 5f                # defensive: stop on NUL
+    sb   t1, 0(t0)                 # store ch
+    addi t0, t0, 1
+    j    3b
+
+5:  sb   x0, 0(t0)                 # NUL-terminate
+    mv   a0, t3                    # return buf
+    ret
+
+6:  addi sp, sp, 16                # pop temp (on EOF path)
+    # If EOF before any char, return x0 like libc gets
+    beq  t0, t3, 7f
+    sb   x0, 0(t0)                 # had some chars: NUL-terminate
+    mv   a0, t3
+    ret
+7:  mv   a0, x0
+    ret
+
+# getchar() → a0 = next byte (0..255) or -1 on EOF
+getchar:
+    addi sp, sp, -16        # make 16 bytes (keep stack nicely aligned)
+    li   a0, 0              # STDIN
+    mv   a1, sp             # buf = sp
+    li   a2, 1              # count = 1
+    li   a7, 63             # __NR_READ
+    ecall                   # a0 = bytes read
+    beqz a0, .gc_eof        # 0 => EOF
+    lbu  a0, 0(sp)          # load the byte as unsigned
+    addi sp, sp, 16
+    ret
+.gc_eof:
+    li   a0, -1
+    addi sp, sp, 16
+    ret
+
+
+# putchar(int c) → returns same char in a0
+putchar:
+    addi sp, sp, -16
+    sb   a0, 0(sp)          # store low 8 bits of a0
+    li   a0, 1              # STDOUT
+    mv   a1, sp             # buf = sp
+    li   a2, 1              # count = 1
+    li   a7, 64             # __NR_WRITE
+    ecall
+    lb   a0, 0(sp)          # return the char value
+    addi sp, sp, 16
+    ret
+
+
 .data                                    #everything from .text being converted back into data
 prompt:     .ascii "Enter a message: "
 prompt_end:
