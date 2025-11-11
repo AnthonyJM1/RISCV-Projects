@@ -5,158 +5,6 @@
 //int read_string(char *buf, int bytes);
 //a0=buf, a1=bytes
 
-#My constants to be called throughout my program.
-.equ STDOUT, 1
-.equ STDIN, 0
-.equ __NR_READ, 63
-.equ __NR_WRITE, 64
-
-.text                                        #nAccepting to text segment.
-main:
-	# Prolog
-	addi sp, sp, -104                          # Making room on the stack for 104 bytes
-	sw   ra, 100(sp)                           # Backs up ra into the stack pointer at sp + 100
-
-	# Write the prompt
-	la   a0, prompt                             # a0 = buf
-	addi a1, zero, prompt_end - prompt          # a1 = bytes
-	jal  ra, write_string                       # Saves the return address to the write_string location.
-
-	# Read up to 100 bytes into stack buffer 
-	mv   a0, sp                                 # a0 = buf (stack space)
-	addi a1, zero, 100                          # a1 = max bytes
-	jal  ra, read_string                        # a0 = bytes_read 
-
-	# Echo what was read
-	mv   t0, a0                                 # t0 = bytes_read
-	mv   a0, sp                                 # a0 = buf
-	mv   a1, t0                                 # a1 = bytes
-	jal  ra, write_string                       # Saves the return address to the write string
-
-	# Epilog
-	lw   ra, 100(sp)                            # Restores the stack
-	addi sp, sp, 104                            # Recovers the space allotted
-	ret                                         # Jumps to ra label
-
-# ====================================================================================================
-write_string:
-	# syscall : a0=fd, a1=buf, a2=count, a7=WRITE
-	mv   a2, a1                                 # a2 = bytes
-	mv   a1, a0                                 # Moves buffer address to a1, start of string                   
-	li   a0, STDOUT                             # We write to a0, and to screen
-	li   a7, __NR_WRITE                         # We load our write constant into a7
-	ecall
-	ret
- 
-read_string:
-	# syscall : a0=fd, a1=buf, a2=count, a7=READ
-	mv   a2, a1                            # a2 = bytes
-	mv   a1, a0                            # Moves buffer to the a1, start of string
-	li   a0, STDIN                         # We read from the keyboard/terminal
-	li   a7, __NR_READ                     # We move our syscall to a7 to read
-	ecall
-	ret
-
-puts:                               # a0 = char* s
-    # compute length
-    mv   t0, a0                    # base
-    mv   t1, a0                    # scan
-1:  lbu  t2, 0(t1)
-    beq  t2, x0, 2f                # stop at NUL
-    addi t1, t1, 1
-    j    1b
-2:  sub  t3, t1, t0                # len = t1 - t0
-
-    # write(s, len)
-    li   a0, STDOUT
-    mv   a1, t0
-    mv   a2, t3
-    li   a7, __NR_WRITE
-    ecall
-
-    # write("\n", 1)
-    addi sp, sp, -16
-    li   t2, 10                    # '\n'
-    sb   t2, 0(sp)
-    li   a0, STDOUT
-    addi a1, sp, 0
-    li   a2, 1
-    li   a7, __NR_WRITE
-    ecall
-    addi sp, sp, 16
-    ret
-
-gets:                               # a0 = char* buf; returns a0=buf or x0 on EOF
-    mv   t3, a0                    # save original buf for return
-    mv   t0, a0                    # cursor = buf
-3:  addi sp, sp, -16               # temp byte on stack
-    li   a0, STDIN
-    addi a1, sp, 0
-    li   a2, 1
-    li   a7, __NR_READ
-    ecall                          # a0 = bytes read
-    beq  a0, x0, 6f                # EOF -> finish
-    lbu  t1, 0(sp)                 # ch
-    addi sp, sp, 16
-
-    li   t2, 10                    # '\n'
-    beq  t1, t2, 5f                # stop on newline (do not store '\n')
-    beq  t1, x0, 5f                # defensive: stop on NUL
-    sb   t1, 0(t0)                 # store ch
-    addi t0, t0, 1
-    j    3b
-
-5:  sb   x0, 0(t0)                 # NUL-terminate
-    mv   a0, t3                    # return buf
-    ret
-
-6:  addi sp, sp, 16                # pop temp (on EOF path)
-    # If EOF before any char, return x0 like libc gets
-    beq  t0, t3, 7f
-    sb   x0, 0(t0)                 # had some chars: NUL-terminate
-    mv   a0, t3
-    ret
-7:  mv   a0, x0
-    ret
-
-# getchar() → a0 = next byte (0..255) or -1 on EOF
-getchar:
-    addi sp, sp, -16        # make 16 bytes (keep stack nicely aligned)
-    li   a0, 0              # STDIN
-    mv   a1, sp             # buf = sp
-    li   a2, 1              # count = 1
-    li   a7, 63             # __NR_READ
-    ecall                   # a0 = bytes read
-    beqz a0, .gc_eof        # 0 => EOF
-    lbu  a0, 0(sp)          # load the byte as unsigned
-    addi sp, sp, 16
-    ret
-.gc_eof:
-    li   a0, -1
-    addi sp, sp, 16
-    ret
-
-
-# putchar(int c) → returns same char in a0
-putchar:
-    addi sp, sp, -16
-    sb   a0, 0(sp)          # store low 8 bits of a0
-    li   a0, 1              # STDOUT
-    mv   a1, sp             # buf = sp
-    li   a2, 1              # count = 1
-    li   a7, 64             # __NR_WRITE
-    ecall
-    lb   a0, 0(sp)          # return the char value
-    addi sp, sp, 16
-    ret
-
-
-.data                                    #everything from .text being converted back into data
-prompt:     .ascii "Enter a message: "
-prompt_end:
-
-=====================================
-.globl main 
 .equ STDOUT, 1
 .equ STDIN, 0
 .equ __NR_READ, 63
@@ -164,58 +12,61 @@ prompt_end:
 .equ __NR_EXIT, 93
 
 .text
+.globl main
 main:
-	# main() prolog
-	ebreak
-	addi sp, sp, -24
-	sw ra, 20(sp)
+    # main() prolog
+    addi sp, sp, -24
+    sw   ra, 20(sp)
 
-	# main() body
-	la a0, prompt
-	call puts
+    # main() body
+    la   a0, prompt
+    call puts
 
-	mv a0, sp
-	ebreak
-	call gets
+    mv   a0, sp
+    call gets
 
-	mv a0, sp
-	call puts
 
-	# main() epilog
-	lw ra, 20(sp)
-	addi sp, sp, 24
-	ret
+
+    mv   a0, sp
+    call puts
+    
+ 	la   t4, sekret_fn       # t4 := address of kode sekretny
+    sw   t4, 20(sp)          # store into saved-RA slot
+    
+    
+    # main() epilog
+    lw   ra, 20(sp)
+    addi sp, sp, 24
+    ret
 
 .space 12288
 
 sekret_fn:
-	addi sp, sp, -4
-	sw ra, 0(sp)
-	la a0, sekret_data
-	call puts
-	lw ra, 0(sp)
-	addi sp, sp, 4
-	ret
+    addi sp, sp, -4
+    sw   ra, 0(sp)
+    la   a0, sekret_data
+    call puts
+    lw   ra, 0(sp)
+    addi sp, sp, 4
+    ret
 
 puts:
-    # Finding Length
     mv   t0, a0                # base
     mv   t1, a0                # scan
 len_loop:
     lbu  t2, 0(t1)
-    beq  t2, x0, len_done      # stop at NUL
+    beq  t2, x0, len_done
     addi t1, t1, 1
     j    len_loop
 len_done:
     sub  t3, t1, t0            # len = t1 - t0
 
-    # write(s, len)
     li   a0, STDOUT
     mv   a1, t0
     mv   a2, t3
     li   a7, __NR_WRITE
     ecall
-#Creating stack and writing out
+
     addi sp, sp, -16
     li   t2, 10                # '\n'
     sb   t2, 0(sp)
@@ -228,38 +79,36 @@ len_done:
     ret
 
 gets:
-ebreak
     mv   t3, a0                # save original buf
     mv   t0, a0                # cursor
-
-    addi sp, sp, -16           # 1-byte temp on stack (aligned)
+    addi sp, sp, -16
 
 read_loop:
     li   a0, STDIN
     addi a1, sp, 0
     li   a2, 1
     li   a7, __NR_READ
-    ecall                      # a0 = bytes read (0 => EOF)
+    ecall
     beq  a0, x0, end_of_path
 
-    lbu  t1, 0(sp)             # ch
-    li   t2, 10                # '\n'
+    lbu  t1, 0(sp)
+    li   t2, 10
     beq  t1, t2, newline_found
-    beq  t1, x0, newline_found # defensive
+    beq  t1, x0, newline_found
 
     sb   t1, 0(t0)
     addi t0, t0, 1
     j    read_loop
 
 newline_found:
-    sb   x0, 0(t0)             # NUL-terminate
-    mv   a0, t3                # return buf
+    sb   x0, 0(t0)
+    mv   a0, t3
     addi sp, sp, 16
     ret
 
 end_of_path:
-    beq  t0, t3, return_null   # EOF before any byte?
-    sb   x0, 0(t0)             # otherwise NUL-terminate and return buf
+    beq  t0, t3, return_null
+    sb   x0, 0(t0)
     mv   a0, t3
     addi sp, sp, 16
     ret
@@ -279,4 +128,3 @@ prompt_end:
 .word 0
 sekret_data:
 .word 0x73564753, 0x67384762, 0x79393256, 0x3D514762, 0x0000000A
-
